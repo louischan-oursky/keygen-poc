@@ -12,6 +12,7 @@
     + [Re-activate a license on another machine](#re-activate-a-license-on-another-machine)
   * [What value should we use for fingerprint?](#what-value-should-we-use-for-fingerprint)
   * [Play around with the license in a Go program](#play-around-with-the-license-in-a-go-program)
+  * [Play around with the license in a containerized environment](#play-around-with-the-license-in-a-containerized-environment)
 
 # Keygen.sh PoC
 
@@ -349,3 +350,28 @@ It has deactivated the previous machine under the hood. To verify this, you run
 ./cat --license A0F2D8-359DCA-FFC1F1-FAFD8E-15CCDC-V3 ./hello.txt
 machine limit exceeded. If you want to deactivate the previous machine, and activate this machine instead, add --force-activate
 ```
+
+## Play around with the license in a containerized environment
+
+This section showcases Keygen also works in a containerized environment.
+
+First, you need to build the image with the following command.
+
+```sh
+make cat-image KEYGEN_ACCOUNT_ID=account KEYGEN_PRODUCT_ID=product
+```
+
+- `KEYGEN_ACCOUNT_ID`: You can find it in `.env`.
+- `KEYGEN_PRODUCT_ID`: You need to use the product ID you created previously.
+
+Then you can run the image with the following command:
+
+```sh
+docker run --rm --network host -v "$HOME/Library/Application Support/mkcert/rootCA.pem:/etc/ssl/certs/mkcert.pem" cat:latest keygen-cat --license A0F2D8-359DCA-FFC1F1-FAFD8E-15CCDC-V3 /usr/src/app/hello.txt
+```
+
+- `--rm`: Remove the container after exit.
+- `--network host`: Use host network because the endpoint is hard-coded as `localhost` in the program.
+- `-v ...:/etc/ssl/certs/mkcert.pem`: Mount the CA certificate of mkcert into the container. It is because in our setup, the TLS certificate is signed by that CA.
+
+The rest is just the same as running a Go binary in non-containerized environment, so I do not repeat here.

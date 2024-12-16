@@ -31,3 +31,9 @@ cat:
 .PHONY: clean
 clean:
 	rm -f cat
+
+.PHONY: cat-image
+cat-image: KEYGEN_ACCOUNT_ID ::= ""
+cat-image: KEYGEN_PRODUCT_ID ::= ""
+cat-image:
+	docker build --tag cat:latest --build-arg KEYGEN_ACCOUNT_ID=$(KEYGEN_ACCOUNT_ID) --build-arg KEYGEN_PRODUCT_ID=$(KEYGEN_PRODUCT_ID) .

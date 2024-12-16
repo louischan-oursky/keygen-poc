@@ -90,6 +90,10 @@ func validateLicense(ctx context.Context, licenseKey string, fingerprint string,
 }
 
 func main() {
+	keygen.APIURL = buildtimeconstant.KeygenAPIURL
+	keygen.Account = buildtimeconstant.KeygenAccountID
+	keygen.Product = buildtimeconstant.KeygenProductID
+
 	var err error
 	var licenseKey string
 	var forceActivate bool
@@ -99,13 +103,18 @@ func main() {
 	flag.BoolVar(&forceActivate, "force-activate", false, "Deactivate any previous machine in order to activate this machine")
 	flag.StringVar(&fingerprint, "fingerprint", "", "Override the default machine-id based fingerprint. This flag is for PoC purpose only.")
 
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		flag.PrintDefaults()
+		fmt.Fprintf(flag.CommandLine.Output(), "Build time configuration:\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  KEYGEN_API_URL: %v\n", keygen.APIURL)
+		fmt.Fprintf(flag.CommandLine.Output(), "  KEYGEN_ACCOUNT_ID: %v\n", keygen.Account)
+		fmt.Fprintf(flag.CommandLine.Output(), "  KEYGEN_PRODUCT_ID: %v\n", keygen.Product)
+	}
+
 	flag.Parse()
 
 	args := flag.Args()
-
-	keygen.APIURL = buildtimeconstant.KeygenAPIURL
-	keygen.Account = buildtimeconstant.KeygenAccountID
-	keygen.Product = buildtimeconstant.KeygenProductID
 
 	keygen.LicenseKey = licenseKey
 	keygen.Logger = keygen.NewLogger(keygen.LogLevelNone)
