@@ -282,3 +282,9 @@ Note that the license is still expiring. It means the validity period is still c
 ### Re-activate a license on another machine
 
 It is simple. Just repeat [Activate a license](#activate-a-license).
+
+## What value should we use for fingerprint?
+
+The [official documentation](https://keygen.sh/docs/activating-machines/#how-to-identify-a-device) gives some advice on what value to be used as fingerprint. In short, use [github.com/denisbrodbeck/machineid](https://github.com/denisbrodbeck/machineid) in Golang. However, checking the issue list of that package reveals that in a containerized environment, machine-id is not available. So the best we can do in a containerized environment is to generate a cryptographically secure random machine ID, and store it a a writable directory.
+
+The above method works fine in case of non-containerized environment. But if the machine is a VM with shared hardware, then two VMs may share the same machine ID. In this case, follow the [official documentation](https://keygen.sh/docs/choosing-a-licensing-model/floating-licenses/#licensing-virtual-machines), and implement [https://keygen.sh/docs/api/machines/#machines-actions-ping](https://keygen.sh/docs/api/machines/#machines-actions-ping).
