@@ -23,8 +23,10 @@ tls:
 start:
 	docker compose up
 
+cat: KEYGEN_ACCOUNT_ID ::= ""
+cat: KEYGEN_PRODUCT_ID ::= ""
 cat:
-	go build -o cat .
+	go build -o cat -ldflags "-X github.com/louischan-oursky/keygen-poc/pkg/buildtimeconstant.KeygenAccountID=$(KEYGEN_ACCOUNT_ID) -X github.com/louischan-oursky/keygen-poc/pkg/buildtimeconstant.KeygenProductID=$(KEYGEN_PRODUCT_ID)" .
 
 .PHONY: clean
 clean:

@@ -1,8 +1,17 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
 	"io"
 	"os"
+
+	"github.com/keygen-sh/keygen-go/v3"
+	"github.com/keygen-sh/machineid"
+
+	"github.com/louischan-oursky/keygen-poc/pkg/buildtimeconstant"
 )
 
 func cat(args []string) (err error) {
@@ -44,10 +53,78 @@ func cat(args []string) (err error) {
 	return
 }
 
+func validateLicense(ctx context.Context, licenseKey string, fingerprint string, forceActivate bool) error {
+	license, err := keygen.Validate(ctx, fingerprint)
+	switch {
+	case errors.Is(err, keygen.ErrLicenseNotActivated):
+		_, err := license.Activate(ctx, fingerprint)
+		switch {
+		case errors.Is(err, keygen.ErrMachineLimitExceeded):
+			if !forceActivate {
+				fmt.Fprintf(os.Stderr, "machine limit exceeded. If you want to deactivate the previous machine, and activate this machine instead, add --force-activate\n")
+				os.Exit(1)
+			}
+			machines, err := license.Machines(ctx)
+			if err != nil {
+				return err
+			}
+			for _, machine := range machines {
+				err = machine.Deactivate(ctx)
+				if err != nil {
+					return err
+				}
+			}
+			// Call itself recursively to retry, but set forceActivate=false so that we do not have infinite recursive.
+			return validateLicense(ctx, licenseKey, fingerprint, false)
+		case err != nil:
+			return err
+		}
+	case errors.Is(err, keygen.ErrLicenseExpired):
+		fmt.Fprintf(os.Stderr, "license is expired: %v\n", err)
+		os.Exit(1)
+	case err != nil:
+		return err
+	}
+
+	return nil
+}
+
 func main() {
-	// We do not care about the program name.
-	args := os.Args[1:]
-	err := cat(args)
+	var err error
+	var licenseKey string
+	var forceActivate bool
+	var fingerprint string
+
+	flag.StringVar(&licenseKey, "license", "", "The license key")
+	flag.BoolVar(&forceActivate, "force-activate", false, "Deactivate any previous machine in order to activate this machine")
+	flag.StringVar(&fingerprint, "fingerprint", "", "Override the default machine-id based fingerprint. This flag is for PoC purpose only.")
+
+	flag.Parse()
+
+	args := flag.Args()
+
+	keygen.APIURL = buildtimeconstant.KeygenAPIURL
+	keygen.Account = buildtimeconstant.KeygenAccountID
+	keygen.Product = buildtimeconstant.KeygenProductID
+
+	keygen.LicenseKey = licenseKey
+	keygen.Logger = keygen.NewLogger(keygen.LogLevelNone)
+
+	if fingerprint == "" {
+		fingerprint, err = machineid.ProtectedID(keygen.Product)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	ctx := context.Background()
+
+	err = validateLicense(ctx, licenseKey, fingerprint, forceActivate)
+	if err != nil {
+		panic(err)
+	}
+
+	err = cat(args)
 	if err != nil {
 		panic(err)
 	}

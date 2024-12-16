@@ -10,6 +10,8 @@
     + [Activate a license](#activate-a-license)
     + [Deactivate a license](#deactivate-a-license)
     + [Re-activate a license on another machine](#re-activate-a-license-on-another-machine)
+  * [What value should we use for fingerprint?](#what-value-should-we-use-for-fingerprint)
+  * [Play around with the license in a Go program](#play-around-with-the-license-in-a-go-program)
 
 # Keygen.sh PoC
 
@@ -288,3 +290,62 @@ It is simple. Just repeat [Activate a license](#activate-a-license).
 The [official documentation](https://keygen.sh/docs/activating-machines/#how-to-identify-a-device) gives some advice on what value to be used as fingerprint. In short, use [github.com/denisbrodbeck/machineid](https://github.com/denisbrodbeck/machineid) in Golang. However, checking the issue list of that package reveals that in a containerized environment, machine-id is not available. So the best we can do in a containerized environment is to generate a cryptographically secure random machine ID, and store it a a writable directory.
 
 The above method works fine in case of non-containerized environment. But if the machine is a VM with shared hardware, then two VMs may share the same machine ID. In this case, follow the [official documentation](https://keygen.sh/docs/choosing-a-licensing-model/floating-licenses/#licensing-virtual-machines), and implement [https://keygen.sh/docs/api/machines/#machines-actions-ping](https://keygen.sh/docs/api/machines/#machines-actions-ping).
+
+## Play around with the license in a Go program
+
+This section showcases the use of Keygen Go SDK.
+
+This Go program is a `cat` program, except that it requires a license key to run :)
+
+First, you need to build it with the following command.
+
+```sh
+make cat KEYGEN_ACCOUNT_ID=account KEYGEN_PRODUCT_ID=product
+```
+
+- `KEYGEN_ACCOUNT_ID`: You can find it in `.env`.
+- `KEYGEN_PRODUCT_ID`: You need to use the product ID you created previously.
+
+Then you can invoke our `cat` with the following command.
+
+```sh
+./cat ./hello.txt
+panic: an error occurred: id=4907adad-7b42-43cb-9352-c443ec240f3f status=401 size=237 body={"meta":{"id":"4907adad-7b42-43cb-9352-c443ec240f3f"},"errors":[{"title":"Unauthorized","detail":"You must be authenticated to complete the request","code":"TOKEN_MISSING","links":{"about":"https://keygen.sh/docs/api/authentication/"}}]}
+
+goroutine 1 [running]:
+main.main()
+        /Users/louischan/keygen-poc/main.go:124 +0x3dc
+```
+
+It is because you have not supplied `--license`. In practice, the license key is written in a persistent location. It is not required to specify it in command line.
+
+Let's try again.
+
+```sh
+./cat --license A0F2D8-359DCA-FFC1F1-FAFD8E-15CCDC-V3 ./hello.txt
+hello
+```
+
+It works.
+
+Let's simulate the case that the license was used on another machine.
+This can be achieved with the flag `--fingerprint`.
+
+```sh
+./cat --license A0F2D8-359DCA-FFC1F1-FAFD8E-15CCDC-V3 --fingerprint somefingerprint ./hello.txt
+machine limit exceeded. If you want to deactivate the previous machine, and activate this machine instead, add --force-activate
+```
+
+It correctly reported that the license has been used already. In practice, the end-user just want to activate this machine anyway. To facilitate this, add the flag `--force-activate`.
+
+```sh
+./cat --license A0F2D8-359DCA-FFC1F1-FAFD8E-15CCDC-V3 --fingerprint somefingerprint --force-activate ./hello.txt
+hello
+```
+
+It has deactivated the previous machine under the hood. To verify this, you run
+
+```
+./cat --license A0F2D8-359DCA-FFC1F1-FAFD8E-15CCDC-V3 ./hello.txt
+machine limit exceeded. If you want to deactivate the previous machine, and activate this machine instead, add --force-activate
+```
