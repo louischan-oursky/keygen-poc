@@ -19,6 +19,13 @@ upgrade: .env
 tls:
 	mkcert -cert-file tls.crt -key-file tls.key "localhost"
 
-.PHONY:
+.PHONY: start
 start:
 	docker compose up
+
+cat:
+	go build -o cat .
+
+.PHONY: clean
+clean:
+	rm -f cat
